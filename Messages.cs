@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Utils;
 
 // -> клиент
 // <- сервер
@@ -12,7 +11,7 @@ using Utils;
 // авторизация
 // 
 // AuthMsg              -> 0x01 {Username} 0x00
-// AuthResultMsg        <- 0x02 {ResultCode} [0-9] {ErrorText} 0x00
+// AuthResultMsg        <- 0x02 {ResultCode(1 byte)} {ErrorText} 0x00
 // ServerCaptionMsg     <- 0x03 {ServerCaption} 0x00
 // UsersMsg             <- 0x04 user1 0x10 user2 0x10 ..... usern 0x10 0x00
 // 
@@ -77,20 +76,20 @@ namespace Messages
     }
     class AuthResultMsg : Msg
     {
-        public char ResultCode;
+        public byte ResultCode;
         public string ErrorText;
-        public AuthResultMsg(char resultCode, string errorText = "")
+        public AuthResultMsg(byte resultCode, string errorText = "")
         {
             ResultCode = resultCode;
             ErrorText = errorText;
             MsgCode = 0x02;
-            Data.Add((byte)resultCode);
+            Data.Add(resultCode);
             Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(errorText)).ToList();
         }
         public static AuthResultMsg Deserialize(byte[] data)
         {
             return new AuthResultMsg(
-                (char)data[0],
+                data[0],
                 UnicodeEncoding.UTF8.GetString(GetRawData(data))
             );
         }
@@ -170,7 +169,7 @@ namespace Messages
             Time = time;
             UserName = userName;
             MsgCode = 0x06;
-            Data = Utils.Utils.DateTimeToBytes(time).ToList();
+            Data = Utils.DateTimeToBytes(time).ToList();
             Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(userName)).ToList();
             Data.Add(0x20);
             Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(text)).ToList();

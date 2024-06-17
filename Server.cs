@@ -12,9 +12,16 @@ namespace Server
 {
     internal class Server
     {
+
         private TcpListener tcpListener;
+        private List<string> users = new List<string>();
         public Server(IPAddress ipAddress, ushort port) {
             this.tcpListener = new TcpListener(ipAddress, port);
+        }
+        private void sendMsg(Socket soket, M.Msg msg)
+        {
+            var bytes = msg.Serialize();
+            soket.Send(bytes);
         }
         private byte[] readForFlag(Socket soket, byte flag)
         {
@@ -30,6 +37,7 @@ namespace Server
                 }
             }
         }
+        
         public void Start() {
             try
             {
@@ -53,6 +61,13 @@ namespace Server
                     case 0x01:
                         var authMessage = M.AuthMsg.Deserialize(data);
                         Console.WriteLine("Попытка подключения с именем" + authMessage.UserName);
+                        if (users.Contains(authMessage.UserName))
+                        {
+                            sendMsg(socket, new M.AuthResultMsg(
+                                '1',
+                                "Данное имя уже занято"
+                                ));
+                        }
                         break;
 
 
