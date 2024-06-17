@@ -64,11 +64,16 @@ namespace Server
                         if (users.Contains(authMessage.UserName))
                         {
                             sendMsg(socket, new M.AuthResultMsg(
-                                '1',
+                                0x02,
                                 "Данное имя уже занято"
                                 ));
+                                break;
                         }
+                        sendMsg(socket, new M.AuthResultMsg(
+                                0x01
+                                ));
                         break;
+
 
 
                     default:
