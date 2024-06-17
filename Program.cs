@@ -19,7 +19,8 @@ namespace Server
             IPAddress iPAddress = readIp();
             Console.Write("Введите порт сервера, по умолчанию 5555: ");
             ushort port = readPort();
-            var server = new Server(iPAddress, port);
+            var serverCaption = "Добро пожаловать на сервер"; // todo ввод с клавиатуры
+            var server = new Server(iPAddress, port, serverCaption);
             server.Start();
         }
         private static IPAddress readIp()
