@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using M = Messages;
 
@@ -14,8 +15,10 @@ namespace Server
     {
 
         private TcpListener tcpListener;
+        private string caption;
         private List<string> users = new List<string>();
-        public Server(IPAddress ipAddress, ushort port) {
+        public Server(IPAddress ipAddress, ushort port, string caption) {
+            this.caption = caption;
             this.tcpListener = new TcpListener(ipAddress, port);
         }
         private void sendMsg(Socket soket, M.Msg msg)
@@ -23,7 +26,7 @@ namespace Server
             var bytes = msg.Serialize();
             soket.Send(bytes);
         }
-        private byte[] readForFlag(Socket soket, byte flag)
+        private byte[] readForFlag(Socket soket, byte flag=0x00)
         {
             var buf = new List<byte>();
             while (true)
@@ -54,14 +57,15 @@ namespace Server
         private void userWorker(Socket socket) 
         {
             while (true) {
-                var data = readForFlag(socket, 0x00);
+                var data = readForFlag(socket);
 
                 switch (data[0])
                 {
                     case 0x01:
-                        var authMessage = M.AuthMsg.Deserialize(data);
-                        Console.WriteLine("Попытка подключения с именем" + authMessage.UserName);
-                        if (users.Contains(authMessage.UserName))
+                        var authMsg = M.AuthMsg.Deserialize(data);
+                        var userName = authMsg.UserName;
+                        Console.WriteLine("Попытка подключения с именем" + userName);
+                        if (users.Contains(userName))
                         {
                             sendMsg(socket, new M.AuthResultMsg(
                                 0x02,
@@ -69,9 +73,27 @@ namespace Server
                                 ));
                                 break;
                         }
+                        if (userName.Length < 2)
+                        {
+                            sendMsg(socket, new M.AuthResultMsg(
+                                0x03,
+                                "Имя не может быть короче 2 символов"
+                                ));
+                            break;
+                        }
+                        if (userName.Length > 25)
+                        {
+                            sendMsg(socket, new M.AuthResultMsg(
+                                0x04,
+                                "Имя не может быть больше 25 символов"
+                                ));
+                            break;
+                        }
+                        users.Add(userName);
                         sendMsg(socket, new M.AuthResultMsg(
                                 0x01
                                 ));
+                        sendMsg(socket, new M.ServerCaptionMsg(caption));
                         break;
 
 
@@ -101,5 +123,6 @@ namespace Server
             }
             tcpListener.Stop();
         }
+        
     }
 }
