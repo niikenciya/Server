@@ -11,6 +11,9 @@ namespace Server
         private static string portPattern = @"^\d{4,5}$";
         public static void Main(string[] args)
         {
+
+            // Utils.DateTimeToUnix(DateTime.Now);
+            // tests
             Console.WriteLine("Добро пожаловать в создание сервера!");
             Console.Write("Введите адрес интерфейса сервера, по умолчанию 0.0.0.0: ");
             IPAddress iPAddress = readIp();

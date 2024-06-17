@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Runtime.Intrinsics.X86;
 using System.Text;
-using System.Threading.Tasks;
-
+using Utils;
 
 // -> клиент
 // <- сервер
@@ -12,16 +11,16 @@ using System.Threading.Tasks;
 // 
 // авторизация
 // 
-// -> 0x01 {Username} 0x00
-// <- 0x02 {ResultCode} [0-9] {ErrorText} 0x00
-// <- 0x03 {ServerCaption} 0x00
-// <- 0x04 user1 0x10 user2 0x10 ..... usern 0x10 0x00
+// AuthMsg              -> 0x01 {Username} 0x00
+// AuthResultMsg        <- 0x02 {ResultCode} [0-9] {ErrorText} 0x00
+// ServerCaptionMsg     <- 0x03 {ServerCaption} 0x00
+// UsersMsg             <- 0x04 user1 0x10 user2 0x10 ..... usern 0x10 0x00
 // 
 // 
 // отправка сообщений
 // 
-// -> 0x05 {MsgText} 0x00
-// <- 0x06 {Unixtime x64} {Username} 0x20 {MsgText} 0x00
+// SendChatMessageMsg   -> 0x05 {MsgText} 0x00
+// NewMessageMsg        <- 0x06 {Unixtime x64} {Username} 0x20 {MsgText} 0x00
 // 
 // 
 // Вход
@@ -35,10 +34,11 @@ using System.Threading.Tasks;
 
 namespace Messages
 {
-    abstract class Message
+    
+    abstract class Msg
     {
         public byte MsgCode { get; set; }
-        public byte[] Data { get; set; } = Array.Empty<byte>();
+        public List<byte> Data { get; set; } = new List<byte>();
         private byte eofByte { get; set; } = 0x00;
 
         public byte[] Serialize()
@@ -46,7 +46,7 @@ namespace Messages
             MemoryStream ms = new MemoryStream();
             BinaryWriter bw = new BinaryWriter(ms);
             bw.Write(MsgCode);
-            bw.Write(Data);
+            bw.Write(Data.ToArray());
             bw.Write(eofByte);
             return ms.ToArray();
         }
@@ -59,75 +59,74 @@ namespace Messages
 
     }
 
-    class AuthMessage : Message
+    class AuthMsg : Msg
     {
         public string UserName;
-        public AuthMessage(string userName)
+        public AuthMsg(string userName)
         {
             UserName = userName;
             MsgCode = 0x01;
-            Data = Encoding.UTF8.GetBytes(userName);
+            Data = Encoding.UTF8.GetBytes(userName).ToList();
         }
-        public static AuthMessage Deserialize(byte[] data)
+        public static AuthMsg Deserialize(byte[] data)
         {
-            return new AuthMessage(
+            return new AuthMsg(
                 Encoding.UTF8.GetString(GetRawData(data))
             );
         }
     }
-    class AuthResultMessage : Message
+    class AuthResultMsg : Msg
     {
         public char ResultCode;
         public string ErrorText;
-        public AuthResultMessage(char resultCode, string errorText = "")
+        public AuthResultMsg(char resultCode, string errorText = "")
         {
             ResultCode = resultCode;
             ErrorText = errorText;
             MsgCode = 0x02;
-            Data = new byte[] { (byte)resultCode };
-            Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(errorText)).ToArray();
+            Data.Add((byte)resultCode);
+            Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(errorText)).ToList();
         }
-        public static AuthResultMessage Deserialize(byte[] data)
+        public static AuthResultMsg Deserialize(byte[] data)
         {
-            return new AuthResultMessage(
+            return new AuthResultMsg(
                 (char)data[0],
                 UnicodeEncoding.UTF8.GetString(GetRawData(data))
             );
         }
     }
-    class ServerCaptionMessage : Message
+    class ServerCaptionMsg : Msg
     {
         public string ServerCaption;
-        public ServerCaptionMessage(string serverCaption = "")
+        public ServerCaptionMsg(string serverCaption = "")
         {
             ServerCaption = serverCaption;
             MsgCode = 0x03;
-            Data = UnicodeEncoding.UTF8.GetBytes(serverCaption);
+            Data = UnicodeEncoding.UTF8.GetBytes(serverCaption).ToList();
         }
-        public static ServerCaptionMessage Deserialize(byte[] data)
+        public static ServerCaptionMsg Deserialize(byte[] data)
         {
-            return new ServerCaptionMessage(
+            return new ServerCaptionMsg(
                 UnicodeEncoding.UTF8.GetString(GetRawData(data))
             );
         }
     }
-    class UsersMessage : Message
+    class UsersMsg : Msg
     {
         public List<string> Users = new List<string>();
-        public UsersMessage(List<string> users)
+        public UsersMsg(List<string> users)
         {
             Users = users;
             MsgCode = 0x04;
-            MemoryStream ms = new MemoryStream();
-            BinaryWriter bw = new BinaryWriter(ms);
+            // MemoryStream ms = new MemoryStream();
+            // BinaryWriter bw = new BinaryWriter(ms);
             foreach (string user in users)
             {
-                bw.Write(UnicodeEncoding.UTF8.GetBytes(user));
-                bw.Write(0x10);
+                Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(user)).ToList();
+                Data.Add(0x10);
             }
-            Data = ms.ToArray();
         }
-        public UsersMessage Deserialize(byte[] data)
+        public UsersMsg Deserialize(byte[] data)
         {
             List<string> users = new List<string>();
             data = GetRawData(data);
@@ -141,7 +140,67 @@ namespace Messages
                     start = i + 1; // Обновляем начало следующей строки после разделителя
                 }
             }
-            return new UsersMessage(users);
+            return new UsersMsg(users);
+        }
+    }
+    class SendChatMessageMsg : Msg
+    {
+        public string Text;
+        public SendChatMessageMsg(string text)
+        {
+            Text = text;
+            MsgCode = 0x05;
+            Data = UnicodeEncoding.UTF8.GetBytes(text).ToList();
+        }
+        public static SendChatMessageMsg Deserialize(byte[] data)
+        {
+            return new SendChatMessageMsg(
+                UnicodeEncoding.UTF8.GetString(GetRawData(data))
+            );
+        }
+    }
+    class NewMessageMsg : Msg
+    {
+        public string Text;
+        public DateTime Time;
+        public string UserName;
+        public NewMessageMsg(string text, DateTime time, string userName)
+        {
+            Text = text;
+            Time = time;
+            UserName = userName;
+            MsgCode = 0x06;
+            Data = Utils.Utils.DateTimeToBytes(time).ToList();
+            Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(userName)).ToList();
+            Data.Add(0x20);
+            Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(text)).ToList();
+        }
+    }
+    class UserEnter: Msg
+    {
+        public DateTime Time;
+        public string UserName;
+        public UserEnter(string text, DateTime time, string userName)
+        {
+            Time = time;
+            UserName = userName;
+            MsgCode = 0x07;
+            Data = Utils.DateTimeToBytes(time).ToList();
+            Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(userName)).ToList();
+        }
+    }
+
+    class UserLeave : Msg
+    {
+        public DateTime Time;
+        public string UserName;
+        public UserLeave(string text, DateTime time, string userName)
+        {
+            Time = time;
+            UserName = userName;
+            MsgCode = 0x08;
+            Data = Utils.DateTimeToBytes(time).ToList();
+            Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(userName)).ToList();
         }
     }
 }

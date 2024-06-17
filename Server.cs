@@ -51,7 +51,7 @@ namespace Server
                 switch (data[0])
                 {
                     case 0x01:
-                        var authMessage = M.AuthMessage.Deserialize(data);
+                        var authMessage = M.AuthMsg.Deserialize(data);
                         Console.WriteLine("Попытка подключения с именем" + authMessage.UserName);
                         break;
 
