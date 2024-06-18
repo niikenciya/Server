@@ -33,7 +33,7 @@ using System.Text;
 
 namespace Messages
 {
-    
+
     abstract class Msg
     {
         public byte MsgCode { get; set; }
@@ -53,7 +53,6 @@ namespace Messages
         public static byte[] GetRawData(byte[] data)
         {
             return data.Skip(1).Take(data.Length - 2).ToArray();
-            // return data[1..^1].ToArray(); // [1..^1] - убираем первый и последний байт. Источник: https://stackoverflow.com/a/70672739/23765108
         }
 
     }
@@ -88,9 +87,10 @@ namespace Messages
         }
         public static AuthResultMsg Deserialize(byte[] data)
         {
+            var rawData = GetRawData(data);
             return new AuthResultMsg(
-                data[0],
-                UnicodeEncoding.UTF8.GetString(GetRawData(data))
+                rawData[0],
+                UnicodeEncoding.UTF8.GetString(rawData.Skip(1).ToArray())
             );
         }
     }
@@ -175,7 +175,7 @@ namespace Messages
             Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(text)).ToList();
         }
     }
-    class UserEnter: Msg
+    class UserEnter : Msg
     {
         public DateTime Time;
         public string UserName;

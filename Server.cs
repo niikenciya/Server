@@ -16,7 +16,7 @@ namespace Server
 
         private TcpListener tcpListener;
         private string caption;
-        private List<string> users = new List<string>();
+        private Dictionary<string, Socket> users = new Dictionary<string, Socket>();
         public Server(IPAddress ipAddress, ushort port, string caption) {
             this.caption = caption;
             this.tcpListener = new TcpListener(ipAddress, port);
@@ -31,6 +31,7 @@ namespace Server
             var buf = new List<byte>();
             while (true)
             {
+                
                 byte[] codeBuf = new byte[1];
                 soket.Receive(codeBuf);
                 buf.Add(codeBuf[0]);
@@ -56,52 +57,68 @@ namespace Server
 
         private void userWorker(Socket socket) 
         {
+            string userName = "";
             while (true) {
-                var data = readForFlag(socket);
-
-                switch (data[0])
+                try
                 {
-                    case 0x01:
-                        var authMsg = M.AuthMsg.Deserialize(data);
-                        var userName = authMsg.UserName;
-                        Console.WriteLine("Попытка подключения с именем" + userName);
-                        if (users.Contains(userName))
-                        {
-                            sendMsg(socket, new M.AuthResultMsg(
-                                0x02,
-                                "Данное имя уже занято"
-                                ));
+
+                    var data = readForFlag(socket);
+
+                    switch (data[0])
+                    {
+                        case 0x01:
+                            var authMsg = M.AuthMsg.Deserialize(data);
+                            userName = authMsg.UserName;
+                            Console.WriteLine("Попытка подключения с именем " + userName);
+                            if (users.ContainsKey(userName))
+                            {
+                                sendMsg(socket, new M.AuthResultMsg(
+                                    0x02,
+                                    "Данное имя уже занято"
+                                    ));
+                                socket.Close();
                                 break;
-                        }
-                        if (userName.Length < 2)
-                        {
+                            }
+                            if (userName.Length < 2)
+                            {
+                                sendMsg(socket, new M.AuthResultMsg(
+                                    0x03,
+                                    "Имя не может быть короче 2 символов"
+                                    ));
+                                socket.Close();
+                                break;
+                            }
+                            if (userName.Length > 25)
+                            {
+                                sendMsg(socket, new M.AuthResultMsg(
+                                    0x04,
+                                    "Имя не может быть больше 25 символов"
+                                    ));
+                                socket.Close();
+                                break;
+                            }
+                            users[userName] = socket;
                             sendMsg(socket, new M.AuthResultMsg(
-                                0x03,
-                                "Имя не может быть короче 2 символов"
-                                ));
+                                    0x01
+                                    ));
+                            sendMsg(socket, new M.ServerCaptionMsg(caption));
+                            Console.WriteLine(userName + " успешно подключился");
+                            // todo разослать всем сообщение об этом великом событии
+
                             break;
-                        }
-                        if (userName.Length > 25)
-                        {
-                            sendMsg(socket, new M.AuthResultMsg(
-                                0x04,
-                                "Имя не может быть больше 25 символов"
-                                ));
+
+
+
+                        default:
                             break;
-                        }
-                        users.Add(userName);
-                        sendMsg(socket, new M.AuthResultMsg(
-                                0x01
-                                ));
-                        sendMsg(socket, new M.ServerCaptionMsg(caption));
-                        break;
-
-
-
-                    default:
-                        break;
+                    }
                 }
-
+                catch (Exception ex) {
+                    if (ex is SocketException || ex is System.ObjectDisposedException)
+                        users.Remove(userName);
+                    break;
+                    // todo разослать всем сообщение о выходе пользователя
+                }
             }
         }
 
