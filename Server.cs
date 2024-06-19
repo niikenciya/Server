@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Messages;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -24,7 +25,18 @@ namespace Server
         private void sendMsg(Socket soket, M.Msg msg)
         {
             var bytes = msg.Serialize();
-            soket.Send(bytes);
+            Thread sendThr = new Thread(() => {
+                try
+                {
+                    soket.Send(bytes);
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine("Не удалось отправить сообщение");
+                }
+            });
+            
+            sendThr.Start();
         }
         private byte[] readForFlag(Socket soket, byte flag=0x00)
         {
@@ -58,55 +70,69 @@ namespace Server
         private void userWorker(Socket socket) 
         {
             string userName = "";
-            while (true) {
+            while (socket.Connected) {
                 try
                 {
 
                     var data = readForFlag(socket);
-
+                    
                     switch (data[0])
                     {
                         case 0x01:
+                            var resultMsg = new M.AuthResultMsg(
+                                    0x01
+                                    );
                             var authMsg = M.AuthMsg.Deserialize(data);
                             userName = authMsg.UserName;
                             Console.WriteLine("Попытка подключения с именем " + userName);
                             if (users.ContainsKey(userName))
                             {
-                                sendMsg(socket, new M.AuthResultMsg(
+                                Console.WriteLine("Отказ. Имя уже занято");
+                                resultMsg = new M.AuthResultMsg(
                                     0x02,
                                     "Данное имя уже занято"
-                                    ));
-                                socket.Close();
-                                break;
+                                    );
                             }
                             if (userName.Length < 2)
                             {
-                                sendMsg(socket, new M.AuthResultMsg(
+                                Console.WriteLine("Отказ. Имя слишком короткое");
+                                resultMsg = new M.AuthResultMsg(
                                     0x03,
                                     "Имя не может быть короче 2 символов"
-                                    ));
-                                socket.Close();
-                                break;
+                                    );
                             }
                             if (userName.Length > 25)
                             {
-                                sendMsg(socket, new M.AuthResultMsg(
+                                Console.WriteLine("Отказ. Имя слишком длинное");
+                                resultMsg = new M.AuthResultMsg(
                                     0x04,
                                     "Имя не может быть больше 25 символов"
-                                    ));
+                                    );
+                            }
+
+                            sendMsg(socket, resultMsg);
+                            if (resultMsg.ResultCode != 1)
+                            {
+                                Thread.Sleep(1000); // ждем секунду, пока сервер отправит ответ дабы не получить ошибку закрытого сокета в методе sendMsg
                                 socket.Close();
-                                break;
+                                return;
                             }
                             users[userName] = socket;
-                            sendMsg(socket, new M.AuthResultMsg(
-                                    0x01
-                                    ));
                             sendMsg(socket, new M.ServerCaptionMsg(caption));
                             Console.WriteLine(userName + " успешно подключился");
                             // todo разослать всем сообщение об этом великом событии
 
                             break;
 
+                        case 0x05:
+                            var sendChatMessageMsg = M.SendChatMessageMsg.Deserialize(data);
+                            Console.WriteLine(userName + ": " + sendChatMessageMsg.Text);
+                            broadcast(new M.NewMessageMsg(
+                                sendChatMessageMsg.Text,
+                                DateTime.Now,
+                                userName
+                                ));
+                            break;
 
 
                         default:
@@ -115,13 +141,24 @@ namespace Server
                 }
                 catch (Exception ex) {
                     if (ex is SocketException || ex is System.ObjectDisposedException)
+                    {
                         users.Remove(userName);
-                    break;
+                        Console.WriteLine(userName + " вышел");
+                        break;
+                    }
                     // todo разослать всем сообщение о выходе пользователя
                 }
             }
         }
 
+        private void broadcast(M.Msg msg)
+        {
+            foreach (var socket in users.Values)
+            {
+                sendMsg(socket, msg);
+            }
+            
+        }
         private void listener()
         {
             try

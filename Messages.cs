@@ -125,7 +125,7 @@ namespace Messages
                 Data.Add(0x10);
             }
         }
-        public UsersMsg Deserialize(byte[] data)
+        public static UsersMsg Deserialize(byte[] data)
         {
             List<string> users = new List<string>();
             data = GetRawData(data);
@@ -173,6 +173,24 @@ namespace Messages
             Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(userName)).ToList();
             Data.Add(0x20);
             Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(text)).ToList();
+        }
+        public static NewMessageMsg Deserialize(byte[] data)
+        {
+            // {Unixtime x64} {Username} 0x20 {MsgText}
+            data = GetRawData(data);
+            var unixTimeBytes = data.Take(8).ToArray();
+            data = data.Skip(8).ToArray();
+            string userName = "";
+            for (int i = 0; i < data.Length; i++)
+            {
+                if (data[i] == 0x20) // Найден разделитель строк
+                {
+                    userName = UnicodeEncoding.UTF8.GetString(data, 0, i);
+                    break;
+                }
+            }
+            string text = UnicodeEncoding.UTF8.GetString(data.Skip(userName.Length + 1).ToArray());
+            return new NewMessageMsg(text, Utils.BytesToDateTime(unixTimeBytes), userName);
         }
     }
     class UserEnter : Msg
