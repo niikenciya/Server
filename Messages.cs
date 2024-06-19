@@ -219,8 +219,6 @@ namespace Messages
             return new UserEnterMsg(Utils.BytesToDateTime(unixTimeBytes), UserName);
         }
     }
-
-
     class UserLeaveMsg : Msg
     {
         // <- 0x08 {Unixtime x64} {Username} 0x00
