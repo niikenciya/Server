@@ -17,7 +17,7 @@ namespace Messages
                 result[i] = (byte)(unix % 255 + 1);
                 unix = unix / 255;
             }
-            return result; //BitConverter.GetBytes(unix);
+            return result;
         }
 
         public static DateTime BytesToDateTime(byte[] bytes)
