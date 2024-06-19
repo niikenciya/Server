@@ -24,11 +24,11 @@ using System.Text;
 // 
 // Вход
 // 
-// <- 0x07 {Unixtime x64} {Username} 0x00
+// UserEnterMsg            <- 0x07 {Unixtime x64} {Username} 0x00
 // 
 // Выход
 // 
-// <- 0x08 {Unixtime x64} {Username} 0x00
+// UserLeaveMsg           <- 0x08 {Unixtime x64} {Username} 0x00
 
 
 namespace Messages
@@ -59,6 +59,7 @@ namespace Messages
 
     class AuthMsg : Msg
     {
+        // -> 0x01 {Username} 0x00
         public string UserName;
         public AuthMsg(string userName)
         {
@@ -75,6 +76,7 @@ namespace Messages
     }
     class AuthResultMsg : Msg
     {
+        // <- 0x02 {ResultCode(1 byte)} {ErrorText} 0x00
         public byte ResultCode;
         public string ErrorText;
         public AuthResultMsg(byte resultCode, string errorText = "")
@@ -96,6 +98,7 @@ namespace Messages
     }
     class ServerCaptionMsg : Msg
     {
+        // <- 0x03 {ServerCaption} 0x00
         public string ServerCaption;
         public ServerCaptionMsg(string serverCaption = "")
         {
@@ -112,6 +115,7 @@ namespace Messages
     }
     class UsersMsg : Msg
     {
+        // <- 0x04 user1 0x10 user2 0x10 ..... usern 0x10 0x00
         public List<string> Users = new List<string>();
         public UsersMsg(List<string> users)
         {
@@ -144,6 +148,7 @@ namespace Messages
     }
     class SendChatMessageMsg : Msg
     {
+        // -> 0x05 {MsgText} 0x00
         public string Text;
         public SendChatMessageMsg(string text)
         {
@@ -160,6 +165,7 @@ namespace Messages
     }
     class NewMessageMsg : Msg
     {
+        // <- 0x06 {Unixtime x64} {Username} 0x20 {MsgText} 0x00
         public string Text;
         public DateTime Time;
         public string UserName;
@@ -176,7 +182,6 @@ namespace Messages
         }
         public static NewMessageMsg Deserialize(byte[] data)
         {
-            // {Unixtime x64} {Username} 0x20 {MsgText}
             data = GetRawData(data);
             var unixTimeBytes = data.Take(8).ToArray();
             data = data.Skip(8).ToArray();
@@ -193,31 +198,48 @@ namespace Messages
             return new NewMessageMsg(text, Utils.BytesToDateTime(unixTimeBytes), userName);
         }
     }
-    class UserEnter : Msg
+    class UserEnterMsg : Msg
     {
         public DateTime Time;
         public string UserName;
-        public UserEnter(string text, DateTime time, string userName)
+        public UserEnterMsg(DateTime time, string userName)
         {
+            // <- 0x07 {Unixtime x64} {Username} 0x00
             Time = time;
             UserName = userName;
             MsgCode = 0x07;
             Data = Utils.DateTimeToBytes(time).ToList();
             Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(userName)).ToList();
         }
+        public static UserEnterMsg Deserialize(byte[] data)
+        {
+            data = GetRawData(data);
+            var unixTimeBytes = data.Take(8).ToArray();
+            string UserName = UnicodeEncoding.UTF8.GetString(data.ToArray());
+            return new UserEnterMsg(Utils.BytesToDateTime(unixTimeBytes), UserName);
+        }
     }
 
-    class UserLeave : Msg
+
+    class UserLeaveMsg : Msg
     {
+        // <- 0x08 {Unixtime x64} {Username} 0x00
         public DateTime Time;
         public string UserName;
-        public UserLeave(string text, DateTime time, string userName)
+        public UserLeaveMsg(DateTime time, string userName)
         {
             Time = time;
             UserName = userName;
             MsgCode = 0x08;
             Data = Utils.DateTimeToBytes(time).ToList();
             Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(userName)).ToList();
+        }
+        public static UserLeaveMsg Deserialize(byte[] data)
+        {
+            data = GetRawData(data);
+            var unixTimeBytes = data.Take(8).ToArray();
+            string UserName = UnicodeEncoding.UTF8.GetString(data.ToArray());
+            return new UserLeaveMsg(Utils.BytesToDateTime(unixTimeBytes), UserName);
         }
     }
 }
