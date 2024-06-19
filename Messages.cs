@@ -19,7 +19,7 @@ using System.Text;
 // отправка сообщений
 // 
 // SendChatMessageMsg   -> 0x05 {MsgText} 0x00
-// NewMessageMsg        <- 0x06 {Unixtime x64} {Username} 0x20 {MsgText} 0x00
+// NewMessageMsg        <- 0x06 {Unixtime x64} {Username} 0x10 {MsgText} 0x00
 // 
 // 
 // Вход
@@ -165,7 +165,7 @@ namespace Messages
     }
     class NewMessageMsg : Msg
     {
-        // <- 0x06 {Unixtime x64} {Username} 0x20 {MsgText} 0x00
+        // <- 0x06 {Unixtime x64} {Username} 0x10 {MsgText} 0x00
         public string Text;
         public DateTime Time;
         public string UserName;
@@ -177,7 +177,7 @@ namespace Messages
             MsgCode = 0x06;
             Data = Utils.DateTimeToBytes(time).ToList();
             Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(userName)).ToList();
-            Data.Add(0x20);
+            Data.Add(0x10);
             Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(text)).ToList();
         }
         public static NewMessageMsg Deserialize(byte[] data)
@@ -188,7 +188,7 @@ namespace Messages
             string userName = "";
             for (int i = 0; i < data.Length; i++)
             {
-                if (data[i] == 0x20) // Найден разделитель строк
+                if (data[i] == 0x10) // Найден разделитель строк
                 {
                     userName = UnicodeEncoding.UTF8.GetString(data, 0, i);
                     break;
@@ -215,7 +215,7 @@ namespace Messages
         {
             data = GetRawData(data);
             var unixTimeBytes = data.Take(8).ToArray();
-            string UserName = UnicodeEncoding.UTF8.GetString(data.ToArray());
+            string UserName = UnicodeEncoding.UTF8.GetString(data.Skip(8).ToArray());
             return new UserEnterMsg(Utils.BytesToDateTime(unixTimeBytes), UserName);
         }
     }
@@ -236,7 +236,7 @@ namespace Messages
         {
             data = GetRawData(data);
             var unixTimeBytes = data.Take(8).ToArray();
-            string UserName = UnicodeEncoding.UTF8.GetString(data.ToArray());
+            string UserName = UnicodeEncoding.UTF8.GetString(data.Skip(8).ToArray());
             return new UserLeaveMsg(Utils.BytesToDateTime(unixTimeBytes), UserName);
         }
     }

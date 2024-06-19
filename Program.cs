@@ -19,7 +19,8 @@ namespace Server
             IPAddress iPAddress = readIp();
             Console.Write("Введите порт сервера, по умолчанию 5555: ");
             ushort port = readPort();
-            var serverCaption = "Добро пожаловать на сервер"; // todo ввод с клавиатуры
+            Console.Write("Введите приветствие сервера, по умолчанию \"Добро пожаловать на сервер\": ");
+            var serverCaption = readCaption();
             var server = new Server(iPAddress, port, serverCaption);
             server.Start();
         }
@@ -64,6 +65,20 @@ namespace Server
             Console.Write("Порт должен находиться в диапазоне [1024-49151], попробуйте снова: ");
             return readPort();
 
+        }
+        private static string readCaption()
+        {
+            string input = Console.ReadLine();
+            if (input == "")
+            {
+
+                Console.WriteLine("Добро пожаловать на сервер");
+                return "Добро пожаловать на сервер";
+            }
+            else
+            {
+                return input;
+            }
         }
     }
 }
