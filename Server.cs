@@ -154,6 +154,7 @@ namespace Server
                 sendMsg(socket, msg);
             }
         }
+
         private void listener()
         {
             try
@@ -161,7 +162,6 @@ namespace Server
                 while (true)
                 {
                     var tcpSocket = tcpListener.AcceptSocket();
-                    Thread.Sleep(300);
                     Console.WriteLine($"Входящее подключение: {tcpSocket.RemoteEndPoint}");
                     var worker = new Thread(() => userWorker(tcpSocket));
                     worker.Start();
