@@ -6,15 +6,16 @@ namespace Server
 {
     internal class Server
     {
-
         private TcpListener tcpListener;
         private string caption;
         private Dictionary<string, Socket> users = new Dictionary<string, Socket>();
+
         public Server(IPAddress ipAddress, ushort port, string caption)
         {
             this.caption = caption;
             this.tcpListener = new TcpListener(ipAddress, port);
         }
+
         private void sendMsg(Socket soket, M.Msg msg)
         {
             var bytes = msg.Serialize();
@@ -29,15 +30,14 @@ namespace Server
                     Console.WriteLine("Не удалось отправить сообщение");
                 }
             });
-
             sendThr.Start();
         }
+
         private byte[] readForFlag(Socket soket, byte flag = 0x00)
         {
             var buf = new List<byte>();
             while (true)
             {
-
                 byte[] codeBuf = new byte[1];
                 soket.Receive(codeBuf);
                 buf.Add(codeBuf[0]);
@@ -69,11 +69,9 @@ namespace Server
             {
                 while (socket.Connected)
                 {
-
                     var data = readForFlag(socket);
                     if (data.Length > 1)
                     {
-
                         switch (data[0])
                         {
                             case 0x01:
@@ -107,7 +105,6 @@ namespace Server
                                         "Имя не может быть больше 25 символов"
                                         );
                                 }
-
                                 sendMsg(socket, resultMsg);
                                 if (resultMsg.ResultCode != 1)
                                 {
@@ -124,14 +121,12 @@ namespace Server
 
                             case 0x05:
                                 var sendChatMessageMsg = M.SendChatMessageMsg.Deserialize(data);
-                                //Console.WriteLine(userName + ": " + sendChatMessageMsg.Text);
                                 broadcast(new M.NewMessageMsg(
                                     sendChatMessageMsg.Text,
                                     DateTime.Now,
                                     userName
                                     ));
                                 break;
-
 
                             default:
                                 break;
@@ -158,7 +153,6 @@ namespace Server
             {
                 sendMsg(socket, msg);
             }
-
         }
         private void listener()
         {
@@ -179,6 +173,5 @@ namespace Server
             }
             tcpListener.Stop();
         }
-
     }
 }

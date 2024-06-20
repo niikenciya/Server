@@ -30,10 +30,8 @@ using System.Text;
 // 
 // UserLeaveMsg           <- 0x08 {Unixtime x64} {Username} 0x00
 
-
 namespace Messages
 {
-
     abstract class Msg
     {
         public byte MsgCode { get; set; }
@@ -74,6 +72,7 @@ namespace Messages
             );
         }
     }
+
     class AuthResultMsg : Msg
     {
         // <- 0x02 {ResultCode(1 byte)} {ErrorText} 0x00
@@ -96,6 +95,7 @@ namespace Messages
             );
         }
     }
+
     class ServerCaptionMsg : Msg
     {
         // <- 0x03 {ServerCaption} 0x00
@@ -113,6 +113,7 @@ namespace Messages
             );
         }
     }
+
     class UsersMsg : Msg
     {
         // <- 0x04 user1 0x10 user2 0x10 ..... usern 0x10 0x00
@@ -121,8 +122,6 @@ namespace Messages
         {
             Users = users;
             MsgCode = 0x04;
-            // MemoryStream ms = new MemoryStream();
-            // BinaryWriter bw = new BinaryWriter(ms);
             foreach (string user in users)
             {
                 Data = Data.Concat(UnicodeEncoding.UTF8.GetBytes(user)).ToList();
@@ -146,6 +145,7 @@ namespace Messages
             return new UsersMsg(users);
         }
     }
+
     class SendChatMessageMsg : Msg
     {
         // -> 0x05 {MsgText} 0x00
@@ -163,6 +163,7 @@ namespace Messages
             );
         }
     }
+
     class NewMessageMsg : Msg
     {
         // <- 0x06 {Unixtime x64} {Username} 0x10 {MsgText} 0x00
@@ -198,6 +199,7 @@ namespace Messages
             return new NewMessageMsg(text, Utils.BytesToDateTime(unixTimeBytes), userName);
         }
     }
+
     class UserEnterMsg : Msg
     {
         public DateTime Time;
@@ -219,6 +221,7 @@ namespace Messages
             return new UserEnterMsg(Utils.BytesToDateTime(unixTimeBytes), UserName);
         }
     }
+
     class UserLeaveMsg : Msg
     {
         // <- 0x08 {Unixtime x64} {Username} 0x00

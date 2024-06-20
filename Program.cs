@@ -1,19 +1,15 @@
-﻿using System;
-using System.Net;
+﻿using System.Net;
 using System.Text.RegularExpressions;
 
 namespace Server
 {
     class Program
     {
-        //private static Server server;
         private static string ipPattern = @"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$";
         private static string portPattern = @"^\d{4,5}$";
+
         public static void Main(string[] args)
         {
-
-            // Utils.DateTimeToUnix(DateTime.Now);
-            // tests
             Console.WriteLine("Добро пожаловать в создание сервера!");
             Console.Write("Введите адрес интерфейса сервера, по умолчанию 0.0.0.0: ");
             IPAddress iPAddress = readIp();
@@ -24,6 +20,7 @@ namespace Server
             var server = new Server(iPAddress, port, serverCaption);
             server.Start();
         }
+
         private static IPAddress readIp()
         {
             string input = Console.ReadLine();
@@ -44,6 +41,7 @@ namespace Server
             Console.Write("Введен некорректный адрес интерфейса, попробуйте снова: ");
             return readIp();
         }
+
         private static ushort readPort()
         {
             string input = Console.ReadLine();
@@ -64,14 +62,13 @@ namespace Server
             }
             Console.Write("Порт должен находиться в диапазоне [1024-49151], попробуйте снова: ");
             return readPort();
-
         }
+
         private static string readCaption()
         {
             string input = Console.ReadLine();
             if (input == "")
             {
-
                 Console.WriteLine("Добро пожаловать на сервер");
                 return "Добро пожаловать на сервер";
             }
