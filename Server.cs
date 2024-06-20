@@ -112,9 +112,9 @@ namespace Server
                                     socket.Close();
                                     return;
                                 }
-                                users[userName] = socket;
                                 sendMsg(socket, new M.ServerCaptionMsg(caption));
                                 sendMsg(socket, new M.UsersMsg(users.Keys.ToList()));
+                                users[userName] = socket;
                                 Console.WriteLine(userName + " успешно подключился");
                                 broadcast(new M.UserEnterMsg(DateTime.Now, userName));
                                 break;
